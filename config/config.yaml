@@ -1,0 +1,12 @@
+# Configuration file for Binance Bot
+# Read-only phase - no trading parameters yet
+
+# Market data settings
+market:
+  default_symbol: "BTCUSDT"
+  default_interval: "1m"
+  default_limit: 100
+
+# Risk settings (empty for read-only phase)
+risk:
+  # Will be implemented in trading phase
