@@ -42,7 +42,8 @@ binance_bot/
 ├── tests/               # 测试脚本
 │   ├── test_readonly.py
 │   ├── test_virtual_trade.py
-│   └── test_trade_prep.py
+│   ├── test_trade_prep.py
+│   └── test_risk.py
 ├── data/                # 数据存储
 │   └── logs/            # 日志文件
 ├── .env                 # 环境变量（需自行创建）
@@ -108,10 +109,97 @@ python scripts/backtest.py
 - ✅ 性能指标计算
 - ✅ 历史回放
 
+### 风控模块
+- ✅ 状态机管理（头仓+补仓逻辑）
+- ✅ 止损规则（基于P0，补满3次仓后激活）
+- ✅ 止盈规则（基于任意入场价触发）
+- ✅ 数值状态转移表生成
+- ✅ 多持仓风控监控
+
 ### 交易安全准备
 - ✅ 杠杆检查（防止使用上次值）
 - ✅ 保证金模式检查（建议逐仓）
 - ✅ 精度验证（避免 LOT_SIZE 错误）
+
+## 🛡️ 风控模块使用
+
+### 风控规则说明
+
+本系统实现了基于状态机的风控管理：
+
+#### 仓位管理
+- **初始资金**: C（运行时从交易所获取）
+- **杠杆**: L（建议5x）
+- **头仓**: A0 = C/8
+- **补仓**: 每次 A = C/16，最多补仓3次
+- **累计仓位**: A_total(n) = C/8 + n·C/16，n ∈ {0,1,2,3}
+
+#### 止损规则
+- **触发条件**: 补满3次仓（state=3）后激活
+- **止损回报率**: -150% 杠杆回报率
+- **做多止损**: P_stop = P0 × (1 - 1.5/L) = P0 × 0.7
+- **做空止损**: P_stop = P0 × (1 + 1.5/L) = P0 × 1.3
+- **触发动作**: 立即全平并终止状态机
+
+#### 止盈规则
+- **做多止盈**: (current_price / entry_price - 1) ≥ 2.0（标的上涨200%）
+- **做空止盈**: (1 - current_price / entry_price) ≥ 0.4（标的下跌40%）
+- **检查范围**: 任意一笔入场价触发即全平
+- **触发动作**: 立即全平并终止状态机
+
+### 风控模块使用示例
+
+```python
+from core.risk import RiskManager, PositionSide, generate_state_transition_table
+
+# 1. 创建风控管理器
+risk_manager = RiskManager()
+
+# 2. 创建做多持仓
+position = risk_manager.create_position(
+    symbol="BTCUSDT",
+    side=PositionSide.LONG,
+    initial_capital=10000,  # 初始资金
+    leverage=5,              # 杠杆
+    reference_price=50000,   # 参考价格P0
+    entry_price=50000        # 头仓入场价
+)
+
+# 3. 补仓（当价格达到补仓条件时）
+result = position.add_position(48000)
+print(f"补仓成功: 累计仓位 ${result['total_position_size']:.2f}")
+
+# 4. 检查风控事件
+events = risk_manager.check_all_positions({
+    "BTCUSDT": 49000  # 当前价格
+})
+
+for event in events:
+    if event['type'] == 'STOP_LOSS':
+        print(f"触发止损: {event['symbol']} at ${event['current_price']}")
+    elif event['type'] == 'TAKE_PROFIT':
+        print(f"触发止盈: {event['symbol']} at ${event['current_price']}")
+
+# 5. 生成状态转移表
+tables = generate_state_transition_table(
+    initial_capital=10000,
+    leverage=5,
+    reference_price=100
+)
+```
+
+### 运行风控测试
+
+```bash
+# 运行完整的风控测试
+python tests/test_risk.py
+```
+
+输出包括：
+- 做多场景的完整状态转移
+- 做空场景的完整状态转移
+- 多持仓管理测试
+- 详细的数值状态转移表
 
 ## 🔧 开发策略
 
