@@ -13,6 +13,7 @@ from utils.indicators import (
     calculate_bollinger_bands, calculate_atr, calculate_volume_ratio,
     detect_rsi_divergence,
 )
+from strategies.ignition_detector import IgnitionDetector
 
 
 class SignalType(Enum):
@@ -42,6 +43,7 @@ SHORT_SIGNAL_WEIGHTS = {
     "price_pullback":    1.2,   # 从高点回落
     "failed_new_high":   1.1,   # 无法创新高
     "volume_divergence": 1.3,   # 量价背离
+    "ignition_signal":   1.4,   # 引爆信号（5m/15m 短周期异动）
 }
 
 
@@ -50,14 +52,17 @@ class SignalEngine:
     信号引擎：分析 K 线数据，生成做空信号列表并评分
     """
 
-    def __init__(self, weights: Dict[str, float] = None):
+    def __init__(self, weights: Dict[str, float] = None,
+                 ignition_config: Dict = None):
         self.weights = weights or SHORT_SIGNAL_WEIGHTS
+        self.ignition_detector = IgnitionDetector(config=ignition_config)
 
     # ----------------------------------------------------------
     # 公开接口
     # ----------------------------------------------------------
 
-    def analyze(self, klines: List, current_price: float) -> List[Signal]:
+    def analyze(self, klines: List, current_price: float,
+                klines_5m: List = None, klines_15m: List = None) -> List[Signal]:
         """分析所有信号，返回触发的信号列表"""
         closes = get_closes_from_klines(klines)
         opens = get_opens_from_klines(klines)
@@ -90,6 +95,20 @@ class SignalEngine:
                 sig.weight = self.weights.get(sig.name, 1.0)
                 signals.append(sig)
 
+        # 引爆信号检测（需要 5m/15m 数据）
+        if klines_5m and klines_15m:
+            ignition_result = self.ignition_detector.detect(klines_5m, klines_15m)
+            if ignition_result:
+                sig = Signal(
+                    name="ignition_signal",
+                    signal_type=SignalType.VOLUME,
+                    strength=ignition_result.strength,
+                    direction="SHORT",
+                    description=ignition_result.description,
+                    weight=self.weights.get("ignition_signal", 1.4),
+                )
+                signals.append(sig)
+
         return signals
 
     def get_signal_score(self, signals: List[Signal]) -> float:
@@ -107,10 +126,15 @@ class SignalEngine:
 
     def should_enter(self, signals: List[Signal],
                      min_score: float = 0.6,
-                     min_signals: int = 3) -> bool:
+                     min_signals: int = 3,
+                     require_ignition: bool = False) -> bool:
         """是否满足入场条件"""
         if len(signals) < min_signals:
             return False
+        if require_ignition:
+            has_ignition = any(s.name == "ignition_signal" for s in signals)
+            if not has_ignition:
+                return False
         return self.get_signal_score(signals) >= min_score
 
 

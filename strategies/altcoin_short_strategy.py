@@ -38,6 +38,10 @@ DEFAULT_CONFIG = {
     # 极端行情阈值
     "extreme_candle_pct": 0.20,
     "extreme_hour_pct": 0.30,
+    # 引爆信号配置
+    "ignition_klines_5m_limit": 30,
+    "ignition_klines_15m_limit": 30,
+    "require_ignition_for_entry": False,
 }
 
 
@@ -140,13 +144,35 @@ class AltcoinShortStrategy:
             logger.info(f"{symbol} 检测到极端行情，跳过")
             return None
 
-        # 信号分析
+        # 第一轮：仅用 1h 数据做初步信号分析
         signals = self.signal_engine.analyze(klines, current_price)
+
+        # 优化 API 调用：1h 信号 >= 2 个时才拉取短周期数据
+        klines_5m = None
+        klines_15m = None
+        if len(signals) >= 2:
+            try:
+                limit_5m = self.config["ignition_klines_5m_limit"]
+                limit_15m = self.config["ignition_klines_15m_limit"]
+                klines_5m = get_klines(symbol, interval="5m", limit=limit_5m)
+                klines_15m = get_klines(symbol, interval="15m", limit=limit_15m)
+            except Exception as e:
+                logger.debug(f"{symbol} 获取短周期数据失败: {e}")
+
+            # 第二轮：带短周期数据重新分析（引爆信号会追加到列表）
+            if klines_5m and klines_15m:
+                signals = self.signal_engine.analyze(
+                    klines, current_price,
+                    klines_5m=klines_5m, klines_15m=klines_15m,
+                )
+
         score = self.signal_engine.get_signal_score(signals)
+        require_ignition = self.config["require_ignition_for_entry"]
         should_enter = self.signal_engine.should_enter(
             signals,
             min_score=self.config["min_signal_score"],
             min_signals=self.config["min_signals"],
+            require_ignition=require_ignition,
         )
 
         signal_names = [s.name for s in signals]

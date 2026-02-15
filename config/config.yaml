@@ -36,3 +36,29 @@ screener:
   min_volume_usdt: 20000000      # 最低成交额 2000万 USDT
   max_spread_pct: 0.005          # 最大买卖价差 0.5%
   max_funding_rate: 0.0015       # 最大资金费率
+
+# ============================================================
+# 引爆信号配置（5m/15m 短周期异动检测）
+# ============================================================
+ignition:
+  weight: 1.4                    # 引爆信号在评分中的权重
+  5m:
+    spike_upper_shadow_ratio: 1.5  # 上影线 >= 实体 N 倍
+    spike_surge_pct: 0.015         # 冲高幅度 >= 1.5%
+    spike_volume_ratio: 2.0        # 放量倍数
+    spike_shrink_ratio: 0.6        # 后续缩量比
+    crash_drop_pct: 0.015          # 单根阴线跌幅
+    crash_body_ratio: 0.6          # 实体占比
+    crash_volume_ratio: 2.0        # 放量倍数
+    crash_consecutive_drop_pct: 0.02  # 连续阴线累计跌幅
+    crash_consecutive_count: 3     # 连续阴线根数
+  15m:
+    spike_upper_shadow_ratio: 1.5
+    spike_surge_pct: 0.025         # 15m 更宽松
+    spike_volume_ratio: 2.0
+    spike_shrink_ratio: 0.6
+    crash_drop_pct: 0.025
+    crash_body_ratio: 0.6
+    crash_volume_ratio: 2.0
+    crash_consecutive_drop_pct: 0.035
+    crash_consecutive_count: 3

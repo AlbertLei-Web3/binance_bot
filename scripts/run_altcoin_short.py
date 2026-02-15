@@ -39,12 +39,13 @@ def build_strategy(config: dict) -> AltcoinShortStrategy:
     """根据配置构建策略实例"""
     strategy_cfg = config.get("altcoin_short", {})
     screener_cfg = config.get("screener", {})
+    ignition_cfg = config.get("ignition", None)
     initial_balance = strategy_cfg.get("total_capital", 100000)
 
     trade_manager = VirtualTradeManager(initial_balance=float(initial_balance))
     risk_manager = RiskManager()
     screener = AltcoinScreener(config=screener_cfg)
-    signal_engine = SignalEngine()
+    signal_engine = SignalEngine(ignition_config=ignition_cfg)
 
     return AltcoinShortStrategy(
         trade_manager=trade_manager,
