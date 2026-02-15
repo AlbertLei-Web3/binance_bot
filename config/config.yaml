@@ -1,5 +1,4 @@
 # Configuration file for Binance Bot
-# Read-only phase - no trading parameters yet
 
 # Market data settings
 market:
@@ -7,6 +6,33 @@ market:
   default_interval: "1m"
   default_limit: 100
 
-# Risk settings (empty for read-only phase)
-risk:
-  # Will be implemented in trading phase
+# ============================================================
+# 山寨币做空策略配置
+# ============================================================
+altcoin_short:
+  total_capital: 100000          # 总资金 (USDT)
+  max_per_symbol: 0.10           # 单币种最大占比 10%
+  leverage: 5                    # 杠杆倍数
+  max_positions: 5               # 最大同时持仓数
+  min_signals: 3                 # 最少信号数
+  min_signal_score: 0.6          # 最低信号评分
+  max_hold_hours: 48             # 最大持仓时间（小时）
+  cycle_interval_sec: 300        # 主循环间隔（秒）
+  # 补仓
+  add_position_thresholds: [0.08, 0.15, 0.25]
+  add_position_interval_min: 30  # 补仓最小间隔（分钟）
+  # 极端行情保护
+  extreme_candle_pct: 0.20       # 单根 K 线涨跌幅阈值
+  extreme_hour_pct: 0.30         # 连续 K 线累计涨跌幅阈值
+  # 资金费率
+  funding_rate_threshold: 0.0015
+
+# 标的筛选配置
+screener:
+  top_n: 10                      # 涨幅榜取前 N
+  pump_detect_days: 3            # 连续拉涨最少天数
+  daily_min_gain: 0.12           # 每日最低涨幅 12%
+  total_min_gain: 1.00           # 累计最低涨幅 100%
+  min_volume_usdt: 20000000      # 最低成交额 2000万 USDT
+  max_spread_pct: 0.005          # 最大买卖价差 0.5%
+  max_funding_rate: 0.0015       # 最大资金费率
