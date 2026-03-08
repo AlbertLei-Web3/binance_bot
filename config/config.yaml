@@ -7,7 +7,82 @@ market:
   default_limit: 100
 
 # ============================================================
-# 山寨币做空策略配置
+# 钉钉推送配置
+# ============================================================
+dingtalk:
+  webhook_url: ""                 # 钉钉机器人 Webhook 地址
+  secret: ""                      # 加签密钥（可选）
+  enabled: false                  # 是否启用推送
+  at_all_on_signal: true          # 暴跌信号时是否 @所有人
+
+# ============================================================
+# 扫描器配置（半自动打分系统）
+# ============================================================
+scanner:
+  # 霸榜追踪
+  pump_tracker:
+    top_n: 10                     # 监控涨幅榜前 N 名
+    data_file: "data/pump_history.json"  # 霸榜历史数据文件
+    min_pump_days: 3              # 最少霸榜天数才纳入关注
+
+  # 多周期分析
+  timeframes:
+    - "1d"                        # 日线：霸榜天数、累计涨幅
+    - "4h"                        # 4小时：高位滞涨
+    - "1h"                        # 1小时：RSI、布林带
+    - "30m"                       # 30分钟：量价背离
+    - "15m"                       # 15分钟：核心暴跌信号
+
+  # 15分钟暴跌检测
+  signal_15m:
+    crash_threshold: 0.05         # 暴跌阈值 5%
+    volume_ratio_min: 1.5         # 最小放量倍数
+    body_ratio_min: 0.5           # 实体占比最小值
+
+  # 技术指标阈值
+  indicators:
+    rsi_overbought: 70            # RSI 超买阈值
+    rsi_extreme: 80               # RSI 极度超买
+    bb_upper_threshold: 1.0       # 布林带上轨突破阈值（1.0 = 触及上轨）
+
+  # 评分权重
+  scoring:
+    pump_days_weight: 0.40        # 霸榜天数权重
+    technical_weight: 0.35        # 技术指标权重
+    signal_15m_weight: 0.25       # 15分钟信号权重
+
+  # 仓位建议映射（根据综合评分）
+  position_advice:
+    - min_score: 1.5
+      advice: "10%"
+      description: "激进"
+    - min_score: 1.2
+      advice: "8%"
+      description: "标准"
+    - min_score: 0.9
+      advice: "5%"
+      description: "保守"
+    - min_score: 0.0
+      advice: "观望"
+      description: "不操作"
+
+  # 报告配置
+  report:
+    output_dir: "reports"         # 报告输出目录
+    schedule_times:               # 定时报告时间
+      - "12:00"
+      - "21:00"
+
+# ============================================================
+# 实时监控配置
+# ============================================================
+monitor:
+  enabled: true                   # 是否启用实时监控
+  interval_sec: 60                # 监控间隔（秒）
+  symbols: []                     # 手动指定监控币种（空则自动从霸榜获取）
+
+# ============================================================
+# 山寨币做空策略配置（旧版，保留参考）
 # ============================================================
 altcoin_short:
   total_capital: 100000          # 总资金 (USDT)
