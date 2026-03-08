@@ -53,19 +53,31 @@ class PumpTracker:
 
     def scan_top_gainers(self) -> List[Dict]:
         """
-        获取涨幅榜前 N 名
+        获取涨幅榜前 N 名（仅U本位永续合约）
 
         Returns:
             [{"symbol": "XXXUSDT", "price": 0.123, "change_pct": 0.25}, ...]
         """
         try:
+            # 获取可交易的永续合约列表
+            exchange_info = self.client.futures_exchange_info()
+            perpetual_symbols = set()
+            for s in exchange_info.get("symbols", []):
+                if (s.get("contractType") == "PERPETUAL" and
+                    s.get("quoteAsset") == "USDT" and
+                    s.get("status") == "TRADING"):
+                    perpetual_symbols.add(s["symbol"])
+
+            # 获取行情数据
             tickers = self.client.futures_ticker()
-            # 过滤 USDT 交易对并按涨幅排序
+
+            # 过滤：仅U本位永续合约 + 成交额 > 1000万
             usdt_pairs = [
                 t for t in tickers
-                if t["symbol"].endswith("USDT")
-                and float(t.get("quoteVolume", 0)) > 10_000_000  # 成交额 > 1000万
+                if t["symbol"] in perpetual_symbols
+                and float(t.get("quoteVolume", 0)) > 10_000_000
             ]
+
             # 按涨幅排序
             sorted_pairs = sorted(
                 usdt_pairs,
