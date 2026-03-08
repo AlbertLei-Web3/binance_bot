@@ -103,7 +103,7 @@ def generate_report(components: dict, send_notification: bool = True) -> str:
     pump_tracker.update_daily_record()
 
     # 2. 获取霸榜排名
-    min_days = 3  # 最少霸榜天数
+    min_days = 1  # 最少霸榜天数（测试用1天，正式环境改回3）
     ranking = pump_tracker.get_pump_ranking(min_days=min_days)
 
     if not ranking:
